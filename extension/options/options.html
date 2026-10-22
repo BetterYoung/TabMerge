@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TabMerge 设置</title>
+    <link rel="stylesheet" href="../ui/tokens.css" />
+    <link rel="stylesheet" href="options.css" />
+    <script src="../core/icons.js"></script>
+  </head>
+  <body class="options-body">
+    <div class="app">
+      <!-- 侧栏 ---------------------------------------------------------- -->
+      <aside class="rail">
+        <div class="rail__brand">
+          <span class="rail__logo"><span data-icon="stack-2" data-size="18"></span></span>
+          <span class="rail__name">TabMerge</span>
+        </div>
+
+        <nav class="rail__nav" aria-label="设置分区">
+          <a class="rail__item is-active" href="#sec-shortcuts" data-target="sec-shortcuts">
+            <span class="rail__icon" data-icon="keyboard" data-size="18"></span>
+            <span class="rail__label">快捷键</span>
+          </a>
+          <a class="rail__item" href="#sec-rules" data-target="sec-rules">
+            <span class="rail__icon" data-icon="world" data-size="18"></span>
+            <span class="rail__label">分组规则</span>
+          </a>
+          <a class="rail__item" href="#sec-names" data-target="sec-names">
+            <span class="rail__icon" data-icon="stack-2" data-size="18"></span>
+            <span class="rail__label">分组名称</span>
+          </a>
+          <a class="rail__item" href="#sec-behavior" data-target="sec-behavior">
+            <span class="rail__icon" data-icon="settings" data-size="18"></span>
+            <span class="rail__label">行为</span>
+          </a>
+        </nav>
+
+        <div class="rail__foot">
+          <div class="rail__version">v1.0.0</div>
+          <p class="rail__note">设置仅保存在本地，不收集或上传任何数据。</p>
+        </div>
+      </aside>
+
+      <!-- 内容区 -------------------------------------------------------- -->
+      <main class="pane">
+        <header class="pane__header">
+          <h1 class="pane__title">TabMerge 设置</h1>
+          <p class="pane__subtitle">按域名整理标签页，并绑定你顺手的快捷键。</p>
+        </header>
+
+        <!-- 快捷键 -->
+        <section class="card" id="sec-shortcuts">
+          <div class="card__head">
+            <span class="card__tile"><span data-icon="keyboard" data-size="18"></span></span>
+            <div class="card__heading">
+              <h2 class="card__title">快捷键</h2>
+              <p class="card__desc">快捷键需要在 Chrome 的快捷键设置页绑定，扩展无法代替你写入。在那里改完后，回来点「刷新」即可看到最新绑定。</p>
+            </div>
+            <button class="btn btn-quiet" id="btn-refresh-commands" type="button">
+              <span data-icon="refresh" data-size="16"></span><span>刷新</span>
+            </button>
+          </div>
+          <div class="card__body">
+            <ul class="keylist" id="command-rows"></ul>
+          </div>
+          <div class="card__foot">
+            <button class="btn btn-primary" id="btn-open-shortcuts" type="button">
+              <span data-icon="external-link" data-size="16"></span><span>在 Chrome 中修改快捷键</span>
+            </button>
+            <p class="hint" id="shortcut-hint" role="status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <!-- 分组规则 -->
+        <section class="card" id="sec-rules">
+          <div class="card__head">
+            <span class="card__tile"><span data-icon="world" data-size="18"></span></span>
+            <div class="card__heading">
+              <h2 class="card__title">分组规则</h2>
+              <p class="card__desc">决定标签页按什么归为一组，以及哪些域名完全不参与分组。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <div class="row">
+              <div class="row__text">
+                <span class="row__name">分组粒度</span>
+                <span class="row__desc" id="granularity-hint"></span>
+              </div>
+              <div class="row__control">
+                <div class="segmented" role="radiogroup" aria-label="分组粒度">
+                  <label class="segment">
+                    <input type="radio" name="granularity" value="domain" />
+                    <span>可注册域名</span>
+                  </label>
+                  <label class="segment">
+                    <input type="radio" name="granularity" value="host" />
+                    <span>完整主机名</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="row__text">
+                <span class="row__name">最少标签页数</span>
+                <span class="row__desc" id="min-tabs-hint"></span>
+              </div>
+              <div class="row__control">
+                <div class="number-input">
+                  <input
+                    type="number"
+                    id="input-min-tabs"
+                    min="1"
+                    max="20"
+                    step="1"
+                    inputmode="numeric"
+                    aria-label="同一域名最少多少个标签页才建立分组"
+                  />
+                  <span class="number-input__unit">个标签页</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="row__text">
+                <span class="row__name">排除域名</span>
+                <span class="row__desc">列出的域名不会参与分组，标签页会保持平铺状态。</span>
+              </div>
+              <div class="row__control">
+                <div class="chip-input">
+                  <input
+                    type="text"
+                    id="exclude-input"
+                    placeholder="例如：mail.google.com"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                  <button class="btn btn-secondary btn-compact" id="btn-add-exclude" type="button">
+                    <span data-icon="plus" data-size="16"></span><span>添加</span>
+                  </button>
+                </div>
+                <ul class="chip-list" id="exclude-list"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 分组名称 -->
+        <section class="card" id="sec-names">
+          <div class="card__head">
+            <span class="card__tile"><span data-icon="stack-2" data-size="18"></span></span>
+            <div class="card__heading">
+              <h2 class="card__title">分组名称</h2>
+              <p class="card__desc">在 Chrome 里重命名分组后，TabMerge 会记住这个名字，下次按域名分组时自动沿用。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <ul class="namelist" id="custom-name-rows"></ul>
+            <p class="empty" id="custom-names-hint">还没有记住的分组名称。</p>
+          </div>
+        </section>
+
+        <!-- 行为 -->
+        <section class="card" id="sec-behavior">
+          <div class="card__head">
+            <span class="card__tile"><span data-icon="settings" data-size="18"></span></span>
+            <div class="card__heading">
+              <h2 class="card__title">行为</h2>
+              <p class="card__desc">新标签页如何处理，以及固定标签页是否参与分组。</p>
+            </div>
+          </div>
+          <div class="card__body">
+            <label class="switch-row">
+              <span class="row__text">
+                <span class="row__name">跳过固定标签页</span>
+                <span class="row__desc">固定标签页保持在最左侧，不参与分组。</span>
+              </span>
+              <input type="checkbox" id="toggle-skip-pinned" />
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+
+            <label class="switch-row">
+              <span class="row__text">
+                <span class="row__name">新标签页并入同域分组</span>
+                <span class="row__desc">新打开的标签页自动并入已有的同域名分组。</span>
+              </span>
+              <input type="checkbox" id="toggle-auto-join" />
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+
+            <label class="switch-row">
+              <span class="row__text">
+                <span class="row__name">无对应分组时自动新建</span>
+                <span class="row__desc">找不到同域名分组时，自动新建一个分组。</span>
+              </span>
+              <input type="checkbox" id="toggle-auto-create" />
+              <span class="switch" aria-hidden="true"></span>
+            </label>
+          </div>
+        </section>
+
+        <p class="footnote">
+          TabMerge 只使用 <code>tabs</code>、<code>tabGroups</code>、<code>storage</code> 三项权限，不申请任何网站访问权限。
+        </p>
+      </main>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

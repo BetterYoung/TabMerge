@@ -1,0 +1,109 @@
+/**
+ * TabMerge 设计令牌 —— 弹窗与设置页共用。
+ * 「静谧清单」方向：纯白底、深墨绿主按钮、Chrome 原生组色作为唯一彩色来源。
+ */
+
+:root {
+  color-scheme: light;
+
+  --surface: #FFFFFF;
+  --surface-sunken: #F7F8F9;
+  --surface-hover: #F1F3F4;
+
+  /* 设置页：应用底色 / 侧栏 / 卡片 / 键帽 */
+  --page-bg: #F4F5F6;
+  --rail-bg: #FAFAFB;
+  --rail-border: #E4E6E9;
+  --card: #FFFFFF;
+  --card-border: #E6E8EB;
+  --tile-bg: #E8F2ED;
+  --keycap-bg: #1F2328;
+  --keycap-text: #FFFFFF;
+  --badge-bg: #F1F3F4;
+  --badge-text: #6B7280;
+  --text: #16181D;
+  --text-muted: #6B7280;
+  --text-faint: #9AA0A6;
+  --hairline: #ECEDEF;
+  --hairline-strong: #DFE1E4;
+
+  --accent: #14624A;
+  --accent-hover: #11523E;
+  --accent-active: #0E4635;
+  --accent-soft: #EDF4F1;
+  --on-accent: #FFFFFF;
+
+  --group-grey: #9AA0A6;
+  --group-blue: #1A73E8;
+  --group-red: #D93025;
+  --group-yellow: #F9AB00;
+  --group-green: #1E8E3E;
+  --group-pink: #F538A0;
+  --group-purple: #9334E6;
+  --group-cyan: #12B5CB;
+
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei',
+    'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', Roboto, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --radius-btn: 10px;
+  --radius-card: 14px;
+  --radius-bar: 3px;
+
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --surface: #1A1C20;
+    --surface-sunken: #15171B;
+    --surface-hover: #24272C;
+
+    --page-bg: #121417;
+    --rail-bg: #16191D;
+    --rail-border: #262A2F;
+    --card: #1A1C20;
+    --card-border: #2C2F34;
+    --tile-bg: #1E2A25;
+    --keycap-bg: #E8E9EB;
+    --keycap-text: #16181D;
+    --badge-bg: #24272C;
+    --badge-text: #9AA0A6;
+    --text: #E8E9EB;
+    --text-muted: #9AA0A6;
+    --text-faint: #7A8087;
+    --hairline: #2C2F34;
+    --hairline-strong: #3A3E44;
+
+    --accent: #2E9E75;
+    --accent-hover: #38AE84;
+    --accent-active: #47BC90;
+    --accent-soft: #1E2A25;
+    --on-accent: #0F1A15;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: 6px;
+}
+
+.icon {
+  display: block;
+  flex: none;
+}

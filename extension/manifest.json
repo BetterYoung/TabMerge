@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "TabMerge",
+  "version": "1.0.0",
+  "description": "按域名一键整理标签页，支持批量收起、展开与解散分组。",
+  "permissions": ["tabs", "tabGroups", "storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "TabMerge",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "commands": {
+    "group-tabs": {
+      "suggested_key": { "default": "Alt+Shift+G" },
+      "description": "自动分组"
+    },
+    "collapse-all": {
+      "suggested_key": { "default": "Alt+Shift+F" },
+      "description": "收起分组"
+    },
+    "expand-all": {
+      "suggested_key": { "default": "Alt+Shift+E" },
+      "description": "展开分组"
+    },
+    "dissolve-all": {
+      "suggested_key": { "default": "Alt+Shift+D" },
+      "description": "解散分组"
+    }
+  }
+}

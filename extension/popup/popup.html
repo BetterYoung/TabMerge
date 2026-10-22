@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>TabMerge</title>
+    <link rel="stylesheet" href="../ui/tokens.css" />
+    <link rel="stylesheet" href="popup.css" />
+    <script src="../core/icons.js"></script>
+  </head>
+  <body>
+    <header class="popup-header">
+      <h1 class="brand">TabMerge</h1>
+      <div class="popup-header__right">
+        <span class="popup-header__count" id="tab-count">正在读取…</span>
+        <button class="icon-button" id="btn-settings" type="button" aria-label="打开设置" title="设置">
+          <span data-icon="settings" data-size="17"></span>
+        </button>
+      </div>
+    </header>
+
+    <div class="action-grid" role="group" aria-label="分组操作">
+      <button class="action action--primary" id="btn-group" type="button" data-command="group-tabs" data-tip-pos="down">
+        <span class="action__icon" data-icon="stack-2" data-size="17"></span>
+        <span class="action__label">自动分组</span>
+        <span class="action__tip" data-tip></span>
+      </button>
+      <button class="action" id="btn-dissolve" type="button" data-command="dissolve-all" data-tip-pos="down">
+        <span class="action__icon" data-icon="arrows-split" data-size="17"></span>
+        <span class="action__label">解散分组</span>
+        <span class="action__tip" data-tip></span>
+      </button>
+      <button class="action" id="btn-collapse" type="button" data-command="collapse-all" data-tip-pos="up">
+        <span class="action__icon" data-icon="fold-down" data-size="17"></span>
+        <span class="action__label">收起分组</span>
+        <span class="action__tip" data-tip></span>
+      </button>
+      <button class="action" id="btn-expand" type="button" data-command="expand-all" data-tip-pos="up">
+        <span class="action__icon" data-icon="fold-up" data-size="17"></span>
+        <span class="action__label">展开分组</span>
+        <span class="action__tip" data-tip></span>
+      </button>
+    </div>
+
+    <hr class="hairline" />
+
+    <section class="group-section">
+      <h2 class="section-label">分组</h2>
+      <ul class="group-list" id="group-list"></ul>
+      <p class="empty-state" id="empty-state" hidden>
+        还没有分组
+        <span>点击上方按钮，把当前窗口的标签页按域名整理一遍。</span>
+      </p>
+    </section>
+
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>
