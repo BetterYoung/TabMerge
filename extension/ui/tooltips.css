@@ -1,0 +1,16 @@
+.action-tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: calc(100vw - 16px);
+  padding: 5px 8px;
+  border: 1px solid var(--tooltip-border);
+  border-radius: 6px;
+  background: var(--tooltip-bg);
+  color: var(--tooltip-text);
+  box-shadow: 0 4px 12px var(--tooltip-shadow);
+  font: 500 11px/1.35 var(--font);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.action-tooltip[hidden] { display: none; }

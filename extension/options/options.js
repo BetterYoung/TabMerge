@@ -78,6 +78,7 @@ let managementGroups = [];
 let libraryWindowId = null;
 let libraryBusy = false;
 let editingGroupName = null;
+let editingGroupWasExpanded = false;
 
 function renderStaticIcons() {
   document.querySelectorAll('[data-icon]').forEach((node) => {
@@ -213,6 +214,17 @@ function librarySelectedIds() {
   return [...els.libraryItems.querySelectorAll('.library-check:checked')].map((item) => item.value);
 }
 
+function makeLibraryIconButton(className, iconName, label, tooltip) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.innerHTML = icon(iconName, { size: 15 });
+  button.setAttribute('aria-label', label);
+  button.dataset.tooltip = tooltip;
+  button.setAttribute('aria-describedby', 'action-tooltip');
+  return button;
+}
+
 function buildManagementGroups() {
   const byDomain = new Map();
   const rows = [];
@@ -287,10 +299,7 @@ function makeTabEditor(tab = {}, isNew = false) {
     info.append(title, url);
     row.append(info);
   }
-  const remove = document.createElement('button');
-  remove.type = 'button';
-  remove.className = 'btn btn-danger-quiet btn-compact';
-  remove.textContent = '移除';
+  const remove = makeLibraryIconButton('library-tab-remove is-danger', 'x', '移除标签', '移除标签');
   remove.addEventListener('click', () => row.remove());
   row.append(remove);
   return row;
@@ -337,20 +346,23 @@ function renderLibrary() {
     if (entry.saved) state.append(makeBadge('已保存', 'saved'));
     if (entry.named) state.append(makeBadge('自动命名', 'named'));
 
-    const rename = document.createElement('button');
-    rename.type = 'button';
-    rename.className = 'management-rename';
-    rename.textContent = '改名';
-    rename.setAttribute('aria-label', `修改分组名称：${entry.title}`);
+    const rename = makeLibraryIconButton('management-rename', 'pencil', `修改分组名称：${entry.title}`, '改名');
     rename.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (editingGroupName === entry.key) return;
+      editingGroupWasExpanded = details.open;
       editingGroupName = entry.key;
       renderLibrary();
     });
 
-    summary.append(bar, labels, state, rename);
+    const chevron = document.createElement('span');
+    chevron.className = 'library-chevron';
+    chevron.innerHTML = icon(details.open ? 'chevron-up' : 'chevron-down', { size: 15 });
+    details.addEventListener('toggle', () => {
+      chevron.innerHTML = icon(details.open ? 'chevron-up' : 'chevron-down', { size: 15 });
+    });
+    summary.append(bar, labels, state, rename, chevron);
     summary.addEventListener('click', (event) => {
       if (event.target.closest('.library-check')) event.stopPropagation();
     });
@@ -383,7 +395,7 @@ function renderLibrary() {
       });
       const save = document.createElement('button');
       save.type = 'button';
-      save.className = 'btn btn-primary btn-compact';
+      save.className = 'btn btn-primary btn-compact library-actions-push';
       save.textContent = '保存修改';
       save.addEventListener('click', () => withLibraryBusy(async () => {
         const draftTabs = [...tabs.querySelectorAll('.library-tab-edit')].map((row) => ({
@@ -394,21 +406,13 @@ function renderLibrary() {
         await refreshLibrary();
         els.libraryStatus.textContent = `已保存「${entry.title}」的标签修改`;
       }));
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'btn btn-danger btn-compact library-remove-group';
-      remove.textContent = '删除保存项';
-      remove.addEventListener('click', () => withLibraryBusy(async () => {
-        await deleteSavedGroups([entry.saved.id]);
-        await refreshLibrary();
-        els.libraryStatus.textContent = `已删除「${entry.title}」的保存项`;
-      }));
-      actions.append(add, save, remove);
+      actions.append(add, save);
     }
     if (entry.named) {
       const removeName = document.createElement('button');
       removeName.type = 'button';
       removeName.className = 'btn btn-danger-quiet btn-compact';
+      if (!entry.saved) removeName.classList.add('library-actions-push');
       removeName.textContent = '删除名称规则';
       removeName.addEventListener('click', () => withLibraryBusy(async () => {
         const next = { ...(await getCustomNames()) };
@@ -423,24 +427,19 @@ function renderLibrary() {
     if (actions.childElementCount) editor.append(actions);
     details.append(summary, editor);
     if (editingGroupName === entry.key) {
-      details.open = false;
+      details.open = true;
+      summary.hidden = true;
+      editor.hidden = true;
       const titleInput = document.createElement('input');
       titleInput.className = 'management-name-input';
       titleInput.value = entry.title;
       titleInput.setAttribute('aria-label', '分组名称');
-      const saveName = document.createElement('button');
-      saveName.type = 'button';
-      saveName.className = 'management-name-save';
-      saveName.textContent = '保存';
-      const cancelName = document.createElement('button');
-      cancelName.type = 'button';
-      cancelName.className = 'management-name-cancel';
-      cancelName.textContent = '取消';
+      const saveName = makeLibraryIconButton('management-name-save is-primary', 'circle-check', '保存分组名称', '保存');
+      const cancelName = makeLibraryIconButton('management-name-cancel', 'x', '取消改名', '取消');
       const nameEditor = document.createElement('div');
       nameEditor.className = 'management-name-editor';
       nameEditor.append(titleInput, saveName, cancelName);
-      summary.replaceChildren();
-      summary.append(nameEditor);
+      details.insertBefore(nameEditor, editor);
       const saveEntryName = () => withLibraryBusy(async () => {
         const title = titleInput.value.trim();
         if (!title) throw new Error('分组名称不能为空');
@@ -450,16 +449,30 @@ function renderLibrary() {
         }
         if (entry.live) await chrome.tabGroups.update(entry.live.id, { title });
         if (entry.saved) await saveEditedGroup(entry.saved.id, { title, tabs: entry.saved.tabs });
+        details.open = editingGroupWasExpanded;
         editingGroupName = null;
+        editingGroupWasExpanded = false;
         await refreshLibrary();
         els.libraryStatus.textContent = `已保存「${title}」的分组名称`;
       });
       saveName.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); saveEntryName(); });
-      cancelName.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); editingGroupName = null; renderLibrary(); });
-      titleInput.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); });
+      cancelName.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        details.open = editingGroupWasExpanded;
+        editingGroupName = null;
+        editingGroupWasExpanded = false;
+        renderLibrary();
+      });
       titleInput.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') { event.preventDefault(); saveEntryName(); }
-        if (event.key === 'Escape') { event.preventDefault(); editingGroupName = null; renderLibrary(); }
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          details.open = editingGroupWasExpanded;
+          editingGroupName = null;
+          editingGroupWasExpanded = false;
+          renderLibrary();
+        }
       });
       requestAnimationFrame(() => titleInput.focus());
     }
@@ -662,6 +675,7 @@ function bindEvents() {
 }
 
 async function init() {
+  globalThis.TabMergeTooltips.init();
   renderStaticIcons();
   els.minTabsInput.min = String(MIN_TABS_RANGE.min);
   els.minTabsInput.max = String(MIN_TABS_RANGE.max);

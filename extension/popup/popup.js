@@ -59,51 +59,6 @@ function makeIconButton(className, iconName, label, tooltip) {
   return button;
 }
 
-function initTooltips() {
-  const tooltip = document.createElement('div');
-  tooltip.id = 'action-tooltip';
-  tooltip.className = 'action-tooltip';
-  tooltip.setAttribute('role', 'tooltip');
-  tooltip.hidden = true;
-  document.body.append(tooltip);
-  let activeButton = null;
-
-  const hide = (button) => {
-    if (button && button !== activeButton) return;
-    activeButton = null;
-    tooltip.hidden = true;
-  };
-  const show = (button) => {
-    if (!button?.dataset.tooltip) return;
-    activeButton = button;
-    tooltip.textContent = button.dataset.tooltip;
-    tooltip.hidden = false;
-    tooltip.style.left = '0px';
-    tooltip.style.top = '0px';
-    const anchor = button.getBoundingClientRect();
-    const tip = tooltip.getBoundingClientRect();
-    const left = Math.max(6, Math.min(anchor.left + (anchor.width - tip.width) / 2, innerWidth - tip.width - 6));
-    const above = anchor.top - tip.height - 6;
-    const top = above >= 6 ? above : Math.min(anchor.bottom + 6, innerHeight - tip.height - 6);
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
-  };
-  const target = (node) => node instanceof Element ? node.closest('[data-tooltip]') : null;
-
-  document.addEventListener('pointerover', (event) => {
-    const button = target(event.target);
-    if (button && !button.contains(event.relatedTarget)) show(button);
-  });
-  document.addEventListener('pointerout', (event) => {
-    const button = target(event.target);
-    if (button && !button.contains(event.relatedTarget)) hide(button);
-  });
-  document.addEventListener('focusin', (event) => show(target(event.target)));
-  document.addEventListener('focusout', (event) => hide(target(event.target)));
-  document.addEventListener('scroll', () => hide(), true);
-  window.addEventListener('resize', () => hide());
-}
-
 function setStatus(text) {
   els.status.textContent = text || '';
 }
@@ -493,7 +448,7 @@ els.btnDeleteSelected.addEventListener('click', () => run(async () => {
 }));
 
 async function init() {
-  initTooltips();
+  globalThis.TabMergeTooltips.init();
   renderStaticIcons();
   try { windowId = (await chrome.windows.getCurrent())?.id ?? null; }
   catch { windowId = null; }

@@ -499,18 +499,17 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 68px;
-  padding: 12px 2px;
+  min-height: 60px;
+  padding: 9px 2px;
   cursor: pointer;
   list-style: none;
 }
 
 .library-group summary::-webkit-details-marker { display: none; }
-.library-group summary::after { content: '›'; margin-left: 8px; color: var(--text-faint); font-size: 20px; transform: rotate(90deg); }
-.library-group[open] summary::after { transform: rotate(-90deg); }
+.library-chevron { display: flex; flex: none; margin-left: 4px; color: var(--text-faint); }
 .library-check { width: 16px; height: 16px; flex: none; }
 .library-check-spacer { width: 16px; height: 16px; flex: none; }
-.library-color { width: 6px; height: 38px; flex: none; border-radius: 4px; }
+.library-color { width: 6px; height: 34px; flex: none; border-radius: 4px; }
 .library-summary-text { display: grid; min-width: 0; gap: 5px; }
 .library-summary-text strong { overflow: hidden; color: var(--text); font-size: 14px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
 .library-summary-text > span { overflow: hidden; color: var(--text-faint); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -518,22 +517,39 @@
 .management-badge { padding: 3px 7px; border-radius: 999px; font-size: 10px; line-height: 1.2; white-space: nowrap; }
 .management-badge--live { color: var(--accent); background: var(--accent-soft); }
 .management-badge--saved { color: var(--badge-text); background: var(--badge-bg); }
-.management-badge--named { color: #6B7280; background: #F7F8F9; }
-.management-rename { flex: none; margin-left: auto; min-height: 32px; border: 1px solid var(--hairline-strong); border-radius: 8px; padding: 0 11px; background: var(--surface-sunken); color: var(--accent); font: 500 12px var(--font); cursor: pointer; }
-.management-rename:hover { border-color: #B8CEC2; background: var(--accent-soft); }
-.management-name-editor { width: 100%; display: flex; align-items: center; gap: 8px; }
+.management-badge--named { color: var(--named-badge-text); background: var(--named-badge-bg); }
+.management-rename, .management-name-save, .management-name-cancel, .library-tab-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.management-rename { width: 30px; height: 30px; margin-left: auto; color: var(--accent); }
+.management-name-save, .management-name-cancel { width: 27px; height: 27px; border-radius: 7px; }
+.library-tab-remove { width: 28px; height: 28px; border-radius: 7px; }
+.management-rename:hover, .management-name-cancel:hover { border-color: var(--accent-border-hover); background: var(--accent-soft-hover); color: var(--accent); }
+.management-name-save.is-primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.management-name-save.is-primary:hover { border-color: var(--accent-hover); background: var(--accent-hover); color: var(--on-accent); }
+.library-tab-remove.is-danger { border-color: var(--danger-border); background: var(--danger-soft); color: var(--danger); }
+.library-tab-remove.is-danger:hover { border-color: var(--danger-border-hover); background: var(--danger-hover-bg); color: var(--danger-hover); }
+.management-name-editor { width: 100%; min-height: 60px; display: flex; align-items: center; gap: 8px; padding: 9px 2px; }
 .management-name-input { width: min(360px, 55%); min-width: 140px; height: 36px; padding: 0 10px; border: 1px solid var(--accent); border-radius: 8px; outline: none; background: var(--surface); color: var(--text); font: 13px var(--font); }
-.management-name-save, .management-name-cancel { min-height: 32px; border: 1px solid var(--accent); border-radius: 8px; padding: 0 11px; background: var(--accent); color: var(--on-accent); font: 500 12px var(--font); cursor: pointer; }
-.management-name-cancel { border-color: var(--hairline-strong); background: var(--surface); color: var(--text-muted); }
 .library-editor { padding: 4px 0 18px 34px; }
 .library-tab-edit input { min-width: 0; height: 36px; padding: 0 10px; border: 1px solid var(--hairline-strong); border-radius: 8px; background: var(--surface); color: var(--text); font: 13px var(--font); }
 .library-tab-list { display: grid; gap: 8px; }
 .library-tab-edit { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
-.library-tab-info { min-width: 0; display: grid; gap: 4px; }
-.library-tab-title { overflow: hidden; color: var(--text); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.library-tab-url { overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.library-tab-info { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.library-tab-title { min-width: 0; max-width: 46%; flex: 0 1 auto; overflow: hidden; color: var(--text); font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.library-tab-url { min-width: 0; flex: 1 1 0; overflow: hidden; color: var(--text-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .library-editor-actions { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
-.library-remove-group { margin-left: auto; color: var(--text-faint); }
+.library-editor-actions .library-actions-push { margin-left: auto; }
 .library-status { min-height: 18px; }
 .library-no-snapshot { margin: 8px 0; color: var(--text-muted); font-size: 12px; line-height: 1.65; }
 
@@ -682,7 +698,8 @@
 .btn:focus-visible,
 .management-rename:focus-visible,
 .management-name-save:focus-visible,
-.management-name-cancel:focus-visible {
+.management-name-cancel:focus-visible,
+.library-tab-remove:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }

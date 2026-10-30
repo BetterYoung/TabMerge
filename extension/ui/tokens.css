@@ -31,7 +31,16 @@
   --accent-hover: #11523E;
   --accent-active: #0E4635;
   --accent-soft: #EDF4F1;
+  --accent-border-hover: #B8CEC2;
+  --accent-soft-hover: #E3EFE8;
   --on-accent: #FFFFFF;
+
+  --named-badge-bg: #F7F8F9;
+  --named-badge-text: #6B7280;
+  --tooltip-bg: #25332D;
+  --tooltip-text: #FFFFFF;
+  --tooltip-border: transparent;
+  --tooltip-shadow: rgba(0, 0, 0, 0.18);
 
   --danger: #A34E4E;
   --danger-hover: #923D3D;
@@ -88,7 +97,16 @@
     --accent-hover: #38AE84;
     --accent-active: #47BC90;
     --accent-soft: #1E2A25;
+    --accent-border-hover: #456657;
+    --accent-soft-hover: #293A32;
     --on-accent: #0F1A15;
+
+    --named-badge-bg: #24272C;
+    --named-badge-text: #9AA0A6;
+    --tooltip-bg: #F1F2F4;
+    --tooltip-text: #16181D;
+    --tooltip-border: #DFE1E4;
+    --tooltip-shadow: rgba(0, 0, 0, 0.35);
 
     --danger: #E28A8A;
     --danger-hover: #F09A9A;

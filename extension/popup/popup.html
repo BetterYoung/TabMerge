@@ -4,8 +4,10 @@
     <meta charset="utf-8" />
     <title>TabMerge</title>
     <link rel="stylesheet" href="../ui/tokens.css" />
+    <link rel="stylesheet" href="../ui/tooltips.css" />
     <link rel="stylesheet" href="popup.css" />
     <script src="../core/icons.js"></script>
+    <script src="../ui/tooltips.js"></script>
   </head>
   <body>
     <header class="popup-header">
@@ -48,9 +50,9 @@
         <label><input id="group-select-all" type="checkbox" /> 全选</label>
         <span id="group-selection-count">正在读取分组…</span>
         <div class="group-toolbar__actions">
-          <button class="group-toolbar__icon-action" id="btn-save-current-groups" type="button" aria-label="保存当前窗口分组" data-tooltip="保存当前窗口分组"><span data-icon="device-floppy" data-size="16"></span></button>
-          <button class="group-toolbar__icon-action is-danger" id="btn-delete-selected" type="button" disabled aria-label="删除已选分组" data-tooltip="删除已选分组"><span data-icon="trash" data-size="16"></span></button>
-          <button class="group-toolbar__icon-action is-primary" id="btn-restore-selected" type="button" disabled aria-label="在当前窗口恢复" data-tooltip="在当前窗口恢复"><span data-icon="refresh" data-size="16"></span></button>
+          <button class="group-toolbar__icon-action" id="btn-save-current-groups" type="button" aria-label="保存当前窗口分组" data-tooltip="保存当前窗口分组" aria-describedby="action-tooltip"><span data-icon="device-floppy" data-size="16"></span></button>
+          <button class="group-toolbar__icon-action is-danger" id="btn-delete-selected" type="button" disabled aria-label="删除已选分组" data-tooltip="删除已选分组" aria-describedby="action-tooltip"><span data-icon="trash" data-size="16"></span></button>
+          <button class="group-toolbar__icon-action is-primary" id="btn-restore-selected" type="button" disabled aria-label="在当前窗口恢复" data-tooltip="在当前窗口恢复" aria-describedby="action-tooltip"><span data-icon="refresh" data-size="16"></span></button>
         </div>
       </div>
       <ul class="group-list" id="group-list"></ul>
