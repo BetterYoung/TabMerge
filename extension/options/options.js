@@ -11,6 +11,13 @@ import {
   normalizeMinTabsPerGroup,
   MIN_TABS_RANGE,
 } from '../core/settings.js';
+import {
+  deleteSavedGroups,
+  getSavedGroups,
+  saveEditedGroup,
+  saveWindowGroups,
+} from '../core/saved-groups.js';
+import { GROUP_COLOR_HEX, getGroupSnapshot } from '../core/groups.js';
 
 const { icon } = globalThis.TabMergeIcons;
 
@@ -18,6 +25,7 @@ const SHORTCUTS_URL = 'chrome://extensions/shortcuts';
 
 const COMMAND_ORDER = [
   '_execute_action',
+  'open-saved-groups',
   'group-tabs',
   'collapse-all',
   'expand-all',
@@ -27,6 +35,7 @@ const COMMAND_ORDER = [
 /** 各命令的名称与说明。 */
 const COMMAND_META = {
   _execute_action: { label: '打开弹窗', desc: '打开 TabMerge 的弹窗面板。' },
+  'open-saved-groups': { label: '打开分组库', desc: '打开已保存的分组，选择并批量恢复。' },
   'group-tabs': { label: '自动分组', desc: '将当前窗口的标签页按域名自动分组。' },
   'collapse-all': { label: '收起分组', desc: '折叠当前窗口中所有分组，只显示分组标题。' },
   'expand-all': { label: '展开分组', desc: '展开当前窗口中所有分组。' },
@@ -52,9 +61,23 @@ const els = {
   toggleSkipPinned: document.getElementById('toggle-skip-pinned'),
   toggleAutoJoin: document.getElementById('toggle-auto-join'),
   toggleAutoCreate: document.getElementById('toggle-auto-create'),
-  customNameRows: document.getElementById('custom-name-rows'),
-  customNamesHint: document.getElementById('custom-names-hint'),
+  libraryItems: document.getElementById('library-items'),
+  libraryEmpty: document.getElementById('library-empty'),
+  libraryStatus: document.getElementById('library-status'),
+  libraryCount: document.getElementById('library-count'),
+  librarySelectAll: document.getElementById('library-select-all'),
+  librarySaveCurrent: document.getElementById('btn-save-current-groups'),
+  libraryRestore: document.getElementById('library-restore-selected'),
+  libraryDelete: document.getElementById('library-delete-selected'),
 };
+
+let libraryGroups = [];
+let libraryCustomNames = {};
+let libraryCurrentGroups = [];
+let managementGroups = [];
+let libraryWindowId = null;
+let libraryBusy = false;
+let editingGroupName = null;
 
 function renderStaticIcons() {
   document.querySelectorAll('[data-icon]').forEach((node) => {
@@ -184,42 +207,293 @@ async function addExcludedDomain() {
   renderExcluded(next);
 }
 
-/* 已记住的分组名 ---------------------------------------------------- */
+/* 分组管理：名称规则与保存快照合并 ---------------------------------- */
 
-async function renderCustomNames() {
-  const customNames = await getCustomNames();
-  const entries = Object.entries(customNames).sort((a, b) => a[0].localeCompare(b[0]));
+function librarySelectedIds() {
+  return [...els.libraryItems.querySelectorAll('.library-check:checked')].map((item) => item.value);
+}
 
-  els.customNameRows.textContent = '';
-  els.customNamesHint.hidden = entries.length > 0;
+function buildManagementGroups() {
+  const byDomain = new Map();
+  const rows = [];
+  const getOrCreate = (domain, fallbackId) => {
+    const key = domain ? `domain:${domain}` : fallbackId;
+    let entry = byDomain.get(key);
+    if (!entry) {
+      entry = { key, domain: domain || '', title: '', color: 'grey', live: null, saved: null, named: false };
+      byDomain.set(key, entry);
+      rows.push(entry);
+    }
+    return entry;
+  };
 
-  for (const [domain, name] of entries) {
-    const row = document.createElement('li');
-    row.className = 'namerow';
+  for (const [domain, title] of Object.entries(libraryCustomNames)) {
+    const entry = getOrCreate(domain, `name:${domain}`);
+    entry.title = title || domain;
+    entry.named = true;
+  }
+  for (const group of libraryCurrentGroups) {
+    const entry = getOrCreate(group.domain, `live:${group.id}`);
+    entry.live = group;
+    entry.title = libraryCustomNames[group.domain] || group.title || entry.title || group.domain || '未命名分组';
+    entry.color = group.color || entry.color;
+  }
+  for (const item of libraryGroups) {
+    let entry = item.domain ? byDomain.get(`domain:${item.domain}`) : null;
+    if (!entry || entry.saved) {
+      entry = getOrCreate('', `saved:${item.id}`);
+      entry.domain = item.domain || entry.domain;
+    }
+    entry.saved = item;
+    entry.title = libraryCustomNames[item.domain] || entry.live?.title || item.title || entry.title || '未命名分组';
+    entry.color = entry.live?.color || item.color || entry.color;
+  }
+  return rows.sort((a, b) => (a.title || a.domain).localeCompare(b.title || b.domain, 'zh-CN'));
+}
 
-    const chip = document.createElement('span');
-    chip.className = 'namechip';
-    chip.textContent = name;
+function updateLibraryActions() {
+  const selected = librarySelectedIds().length;
+  const savedCount = managementGroups.filter((entry) => entry.saved).length;
+  els.libraryCount.textContent = `${managementGroups.length} 个分组 · ${savedCount} 个已保存${selected ? ` · 已选 ${selected}` : ''}`;
+  els.librarySelectAll.checked = savedCount > 0 && selected === savedCount;
+  els.librarySelectAll.indeterminate = selected > 0 && selected < savedCount;
+  els.librarySelectAll.disabled = libraryBusy || savedCount === 0;
+  els.libraryRestore.disabled = libraryBusy || selected === 0;
+  els.libraryDelete.disabled = libraryBusy || selected === 0;
+  els.librarySaveCurrent.disabled = libraryBusy;
+}
 
-    const domainEl = document.createElement('span');
-    domainEl.className = 'namerow__domain';
-    domainEl.textContent = domain;
+function makeTabEditor(tab = {}, isNew = false) {
+  const row = document.createElement('div');
+  row.className = `library-tab-edit${isNew ? ' is-new' : ''}`;
+  row.dataset.title = tab.title || '';
+  row.dataset.url = tab.url || '';
+  if (isNew) {
+    const url = document.createElement('input');
+    url.type = 'url';
+    url.className = 'library-tab-url-input';
+    url.placeholder = '输入要添加的网页地址（https://…）';
+    url.setAttribute('aria-label', '新标签页网址');
+    row.append(url);
+  } else {
+    const info = document.createElement('div');
+    info.className = 'library-tab-info';
+    const title = document.createElement('span');
+    title.className = 'library-tab-title';
+    title.textContent = tab.title || '网页标题由网站提供';
+    const url = document.createElement('span');
+    url.className = 'library-tab-url';
+    url.textContent = tab.url || '';
+    info.append(title, url);
+    row.append(info);
+  }
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'btn btn-danger-quiet btn-compact';
+  remove.textContent = '移除';
+  remove.addEventListener('click', () => row.remove());
+  row.append(remove);
+  return row;
+}
 
-    const remove = document.createElement('button');
-    remove.type = 'button';
-    remove.className = 'btn btn-quiet btn-compact';
-    remove.textContent = '删除';
-    remove.addEventListener('click', async () => {
-      const current = await getCustomNames();
-      const next = { ...current };
-      delete next[domain];
-      await saveCustomNames(next);
-      await renderCustomNames();
+function renderLibrary() {
+  const expanded = new Set([...els.libraryItems.querySelectorAll('details[open]')].map((node) => node.dataset.id));
+  els.libraryItems.textContent = '';
+  managementGroups = buildManagementGroups();
+  els.libraryEmpty.hidden = managementGroups.length > 0;
+  for (const entry of managementGroups) {
+    const details = document.createElement('details');
+    details.className = 'library-group';
+    details.dataset.id = entry.key;
+    details.open = expanded.has(entry.key);
+    const summary = document.createElement('summary');
+    if (entry.saved) {
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'library-check';
+      check.value = entry.saved.id;
+      check.setAttribute('aria-label', `选择 ${entry.title}`);
+      check.addEventListener('click', (event) => event.stopPropagation());
+      check.addEventListener('change', updateLibraryActions);
+      summary.append(check);
+    } else {
+      const spacer = document.createElement('span');
+      spacer.className = 'library-check-spacer';
+      summary.append(spacer);
+    }
+    const bar = document.createElement('span');
+    bar.className = 'library-color';
+    bar.style.background = GROUP_COLOR_HEX[entry.color] || GROUP_COLOR_HEX.grey;
+    const labels = document.createElement('span');
+    labels.className = 'library-summary-text';
+    const name = document.createElement('strong');
+    name.textContent = entry.title || '未命名分组';
+    const meta = document.createElement('span');
+    meta.textContent = `${entry.domain || entry.saved?.domain || '多个域名'}　${entry.saved?.tabs?.length ?? entry.live?.tabCount ?? 0} 个标签`;
+    labels.append(name, meta);
+    const state = document.createElement('span');
+    state.className = 'management-state';
+    if (entry.live) state.append(makeBadge('当前窗口', 'live'));
+    if (entry.saved) state.append(makeBadge('已保存', 'saved'));
+    if (entry.named) state.append(makeBadge('自动命名', 'named'));
+
+    const rename = document.createElement('button');
+    rename.type = 'button';
+    rename.className = 'management-rename';
+    rename.textContent = '改名';
+    rename.setAttribute('aria-label', `修改分组名称：${entry.title}`);
+    rename.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (editingGroupName === entry.key) return;
+      editingGroupName = entry.key;
+      renderLibrary();
     });
 
-    row.append(chip, domainEl, remove);
-    els.customNameRows.append(row);
+    summary.append(bar, labels, state, rename);
+    summary.addEventListener('click', (event) => {
+      if (event.target.closest('.library-check')) event.stopPropagation();
+    });
+
+    const editor = document.createElement('div');
+    editor.className = 'library-editor';
+    const tabs = document.createElement('div');
+    tabs.className = 'library-tab-list';
+    if (entry.saved) {
+      for (const tab of entry.saved.tabs || []) tabs.append(makeTabEditor(tab));
+    } else {
+      const note = document.createElement('p');
+      note.className = 'library-no-snapshot';
+      note.textContent = entry.live
+        ? '当前分组尚未保存为快照。保存当前窗口后，可在这里编辑标签并用于恢复。'
+        : '这是自动命名规则，保存当前分组后即可在这里管理标签快照。';
+      tabs.append(note);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'library-editor-actions';
+    if (entry.saved) {
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'btn btn-secondary btn-compact';
+      add.textContent = '添加标签';
+      add.addEventListener('click', () => {
+        const row = makeTabEditor({}, true);
+        tabs.append(row);
+        row.querySelector('.library-tab-url-input').focus();
+      });
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'btn btn-primary btn-compact';
+      save.textContent = '保存修改';
+      save.addEventListener('click', () => withLibraryBusy(async () => {
+        const draftTabs = [...tabs.querySelectorAll('.library-tab-edit')].map((row) => ({
+          title: row.dataset.title || '',
+          url: row.querySelector('.library-tab-url-input')?.value ?? row.dataset.url ?? '',
+        }));
+        await saveEditedGroup(entry.saved.id, { title: entry.title, tabs: draftTabs });
+        await refreshLibrary();
+        els.libraryStatus.textContent = `已保存「${entry.title}」的标签修改`;
+      }));
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'btn btn-danger btn-compact library-remove-group';
+      remove.textContent = '删除保存项';
+      remove.addEventListener('click', () => withLibraryBusy(async () => {
+        await deleteSavedGroups([entry.saved.id]);
+        await refreshLibrary();
+        els.libraryStatus.textContent = `已删除「${entry.title}」的保存项`;
+      }));
+      actions.append(add, save, remove);
+    }
+    if (entry.named) {
+      const removeName = document.createElement('button');
+      removeName.type = 'button';
+      removeName.className = 'btn btn-danger-quiet btn-compact';
+      removeName.textContent = '删除名称规则';
+      removeName.addEventListener('click', () => withLibraryBusy(async () => {
+        const next = { ...(await getCustomNames()) };
+        delete next[entry.domain];
+        await saveCustomNames(next);
+        await refreshLibrary();
+        els.libraryStatus.textContent = `已删除「${entry.domain}」的自动命名规则`;
+      }));
+      actions.append(removeName);
+    }
+    editor.append(tabs);
+    if (actions.childElementCount) editor.append(actions);
+    details.append(summary, editor);
+    if (editingGroupName === entry.key) {
+      details.open = false;
+      const titleInput = document.createElement('input');
+      titleInput.className = 'management-name-input';
+      titleInput.value = entry.title;
+      titleInput.setAttribute('aria-label', '分组名称');
+      const saveName = document.createElement('button');
+      saveName.type = 'button';
+      saveName.className = 'management-name-save';
+      saveName.textContent = '保存';
+      const cancelName = document.createElement('button');
+      cancelName.type = 'button';
+      cancelName.className = 'management-name-cancel';
+      cancelName.textContent = '取消';
+      const nameEditor = document.createElement('div');
+      nameEditor.className = 'management-name-editor';
+      nameEditor.append(titleInput, saveName, cancelName);
+      summary.replaceChildren();
+      summary.append(nameEditor);
+      const saveEntryName = () => withLibraryBusy(async () => {
+        const title = titleInput.value.trim();
+        if (!title) throw new Error('分组名称不能为空');
+        if (entry.domain) {
+          const next = { ...(await getCustomNames()), [entry.domain]: title };
+          await saveCustomNames(next);
+        }
+        if (entry.live) await chrome.tabGroups.update(entry.live.id, { title });
+        if (entry.saved) await saveEditedGroup(entry.saved.id, { title, tabs: entry.saved.tabs });
+        editingGroupName = null;
+        await refreshLibrary();
+        els.libraryStatus.textContent = `已保存「${title}」的分组名称`;
+      });
+      saveName.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); saveEntryName(); });
+      cancelName.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); editingGroupName = null; renderLibrary(); });
+      titleInput.addEventListener('click', (event) => { event.preventDefault(); event.stopPropagation(); });
+      titleInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') { event.preventDefault(); saveEntryName(); }
+        if (event.key === 'Escape') { event.preventDefault(); editingGroupName = null; renderLibrary(); }
+      });
+      requestAnimationFrame(() => titleInput.focus());
+    }
+    els.libraryItems.append(details);
   }
+  updateLibraryActions();
+}
+
+function makeBadge(text, kind) {
+  const badge = document.createElement('span');
+  badge.className = `management-badge management-badge--${kind}`;
+  badge.textContent = text;
+  return badge;
+}
+
+async function refreshLibrary() {
+  const [saved, names, snapshot] = await Promise.all([
+    getSavedGroups(),
+    getCustomNames(),
+    libraryWindowId === null ? Promise.resolve({ groups: [] }) : getGroupSnapshot(libraryWindowId),
+  ]);
+  libraryGroups = saved;
+  libraryCustomNames = names;
+  libraryCurrentGroups = snapshot.groups;
+  renderLibrary();
+}
+
+async function withLibraryBusy(action) {
+  if (libraryBusy) return;
+  libraryBusy = true;
+  updateLibraryActions();
+  try { await action(); }
+  catch (error) { els.libraryStatus.textContent = error?.message || '操作失败，请重试'; }
+  finally { libraryBusy = false; updateLibraryActions(); }
 }
 
 /* 侧栏导航：滚动联动高亮 -------------------------------------------- */
@@ -303,7 +577,6 @@ async function loadSettings() {
   els.toggleAutoJoin.checked = settings.autoJoinGroup;
   els.toggleAutoCreate.checked = settings.autoCreateGroup;
   renderExcluded(settings.excludedDomains);
-  await renderCustomNames();
 }
 
 function bindEvents() {
@@ -312,6 +585,40 @@ function bindEvents() {
     await renderCommands();
     els.shortcutHint.textContent = '已刷新快捷键绑定状态。';
   });
+
+  els.librarySelectAll.addEventListener('change', () => {
+    for (const check of els.libraryItems.querySelectorAll('.library-check')) {
+      check.checked = els.librarySelectAll.checked;
+    }
+    updateLibraryActions();
+  });
+  els.librarySaveCurrent.addEventListener('click', () => withLibraryBusy(async () => {
+    if (libraryWindowId === null) {
+      const win = await chrome.windows.getCurrent();
+      libraryWindowId = win?.id ?? null;
+    }
+    if (libraryWindowId === null) throw new Error('无法读取当前浏览器窗口');
+    const result = await saveWindowGroups(libraryWindowId);
+    await refreshLibrary();
+    els.libraryStatus.textContent = result.saved
+      ? `已保存或更新 ${result.saved} 个分组${result.skipped ? `，跳过 ${result.skipped} 个不含网页标签的分组` : ''}`
+      : '当前窗口没有可保存的网页分组';
+  }));
+  els.libraryDelete.addEventListener('click', () => withLibraryBusy(async () => {
+    const removed = await deleteSavedGroups(librarySelectedIds());
+    await refreshLibrary();
+    els.libraryStatus.textContent = `已删除 ${removed} 个保存项`;
+  }));
+  els.libraryRestore.addEventListener('click', () => withLibraryBusy(async () => {
+    if (libraryWindowId === null) throw new Error('无法读取当前浏览器窗口');
+    const result = await chrome.runtime.sendMessage({
+      type: 'tabmerge:restore-saved-groups',
+      ids: librarySelectedIds(),
+      windowId: libraryWindowId,
+    });
+    if (result?.error) throw new Error(result.error);
+    els.libraryStatus.textContent = `已恢复 ${result.groups} 组：复用了 ${result.reused} 个标签，新开 ${result.opened} 个${result.skipped ? `，跳过 ${result.skipped} 个` : ''}${result.failed ? `，${result.failed} 项失败` : ''}`;
+  }));
 
   document.querySelectorAll('input[name="granularity"]').forEach((radio) => {
     radio.addEventListener('change', async () => {
@@ -362,8 +669,19 @@ async function init() {
   const refreshNav = initRailNav();
   await loadSettings();
   await renderCommands();
+  const win = await chrome.windows.getCurrent().catch(() => null);
+  libraryWindowId = win?.id ?? null;
+  await refreshLibrary();
   // 内容渲染完成后重算一次高亮，避免拿到空内容时的旧位置
   refreshNav();
+  const hash = window.location.hash.slice(1);
+  const initialTarget = document.getElementById(
+    hash === 'sec-library' || hash === 'sec-names' ? 'sec-groups' : hash,
+  );
+  if (initialTarget) {
+    document.querySelector(`.rail__item[data-target="${initialTarget.id}"]`)?.classList.add('is-active');
+    requestAnimationFrame(() => initialTarget.scrollIntoView({ behavior: 'auto', block: 'start' }));
+  }
 }
 
 init();

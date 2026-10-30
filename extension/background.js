@@ -1,7 +1,7 @@
 /**
  * TabMerge service worker。
  * 负责：快捷键命令分发、新标签页自动归组。
- * 弹窗与设置页直接调用 core/ 中的函数，无需消息中转。
+ * 分组操作由弹窗与设置页调用；跨页面恢复请求在此串行协调。
  */
 
 import {
@@ -12,6 +12,7 @@ import {
   captureCustomNames,
 } from './core/groups.js';
 import { getSettings } from './core/settings.js';
+import { restoreSavedGroups } from './core/saved-groups.js';
 
 /**
  * 取命令的目标窗口。service worker 里的 currentWindow 指向最后聚焦窗口，
@@ -37,6 +38,14 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 chrome.commands.onCommand.addListener(async (command) => {
+  if (command === 'open-saved-groups') {
+    const windowId = await getTargetWindowId();
+    await chrome.tabs.create({
+      ...(windowId === null ? {} : { windowId }),
+      url: chrome.runtime.getURL('options/options.html#sec-groups'),
+    });
+    return;
+  }
   const windowId = await getTargetWindowId();
   if (windowId === null) return;
   try {
@@ -61,14 +70,42 @@ chrome.commands.onCommand.addListener(async (command) => {
   }
 });
 
+/**
+ * 恢复操作期间暂停自动归组，避免它与恢复流程同时移动标签页。
+ */
+let activeRestoreCount = 0;
+const restoredTabIds = new Set();
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'tabmerge:restore-saved-groups' || sender.id !== chrome.runtime.id) {
+    return false;
+  }
+  activeRestoreCount += 1;
+  restoreSavedGroups(message.ids, message.windowId)
+    .then(({ touchedTabIds = [], ...result }) => {
+      for (const tabId of touchedTabIds) {
+        restoredTabIds.add(tabId);
+        setTimeout(() => restoredTabIds.delete(tabId), 5000);
+      }
+      sendResponse(result);
+    })
+    .catch((error) => sendResponse({ error: error?.message || '恢复失败' }))
+    .finally(() => {
+      activeRestoreCount = Math.max(0, activeRestoreCount - 1);
+    });
+  return true;
+});
+
 /** 自动归组的新标签页做去抖，避免同一批标签页重复触发。 */
 const pendingTabs = new Map();
 
 function scheduleAutoGroup(tabId) {
+  if (activeRestoreCount > 0 || restoredTabIds.has(tabId)) return;
   if (pendingTabs.has(tabId)) return;
   pendingTabs.set(tabId, true);
   setTimeout(async () => {
     pendingTabs.delete(tabId);
+    if (activeRestoreCount > 0 || restoredTabIds.has(tabId)) return;
     try {
       const settings = await getSettings();
       if (!settings.autoJoinGroup && !settings.autoCreateGroup) return;

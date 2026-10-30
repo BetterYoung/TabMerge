@@ -33,6 +33,13 @@
   --accent-soft: #EDF4F1;
   --on-accent: #FFFFFF;
 
+  --danger: #A34E4E;
+  --danger-hover: #923D3D;
+  --danger-soft: #FFF9F8;
+  --danger-hover-bg: #FFF0EF;
+  --danger-border: #E8D2D2;
+  --danger-border-hover: #DAB7B7;
+
   --group-grey: #9AA0A6;
   --group-blue: #1A73E8;
   --group-red: #D93025;
@@ -82,6 +89,13 @@
     --accent-active: #47BC90;
     --accent-soft: #1E2A25;
     --on-accent: #0F1A15;
+
+    --danger: #E28A8A;
+    --danger-hover: #F09A9A;
+    --danger-soft: #2A1D1D;
+    --danger-hover-bg: #382222;
+    --danger-border: #573838;
+    --danger-border-hover: #754747;
   }
 }
 

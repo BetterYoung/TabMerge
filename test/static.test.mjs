@@ -28,13 +28,17 @@ test('manifest 可解析且权限最小化', () => {
   assert.ok(manifest.options_ui.page);
 });
 
-test('manifest 声明了 4 条带建议键位的命令', () => {
+test('manifest 包含 4 条带建议键位的命令和分组库快捷命令', () => {
   const manifest = JSON.parse(read('manifest.json'));
-  const names = Object.keys(manifest.commands);
-  assert.equal(names.length, 4);
-  for (const name of names) {
-    assert.ok(manifest.commands[name].description, `${name} 缺少描述`);
-    assert.ok(manifest.commands[name].suggested_key?.default, `${name} 缺少默认键位`);
+  const commands = Object.entries(manifest.commands);
+  const suggested = commands.filter(([, command]) => command.suggested_key?.default);
+  assert.equal(suggested.length, 4);
+  assert.ok(manifest.commands['open-saved-groups']?.description, '分组库快捷命令缺少说明');
+  for (const [name, command] of commands) {
+    assert.ok(command.description, `${name} 缺少描述`);
+  }
+  for (const [name] of suggested) {
+    assert.ok(manifest.commands[name].suggested_key.default, `${name} 缺少默认键位`);
   }
 });
 

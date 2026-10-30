@@ -44,7 +44,15 @@
     <hr class="hairline" />
 
     <section class="group-section">
-      <h2 class="section-label">分组</h2>
+      <div class="group-toolbar">
+        <label><input id="group-select-all" type="checkbox" /> 全选</label>
+        <span id="group-selection-count">正在读取分组…</span>
+        <div class="group-toolbar__actions">
+          <button class="group-toolbar__icon-action" id="btn-save-current-groups" type="button" aria-label="保存当前窗口分组" data-tooltip="保存当前窗口分组"><span data-icon="device-floppy" data-size="16"></span></button>
+          <button class="group-toolbar__icon-action is-danger" id="btn-delete-selected" type="button" disabled aria-label="删除已选分组" data-tooltip="删除已选分组"><span data-icon="trash" data-size="16"></span></button>
+          <button class="group-toolbar__icon-action is-primary" id="btn-restore-selected" type="button" disabled aria-label="在当前窗口恢复" data-tooltip="在当前窗口恢复"><span data-icon="refresh" data-size="16"></span></button>
+        </div>
+      </div>
       <ul class="group-list" id="group-list"></ul>
       <p class="empty-state" id="empty-state" hidden>
         还没有分组

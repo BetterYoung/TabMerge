@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "TabMerge",
-  "version": "1.0.0",
-  "description": "按域名一键整理标签页，支持批量收起、展开与解散分组。",
+  "version": "1.1.0",
+  "description": "按域名整理标签页，保存分组快照并批量恢复。",
   "permissions": ["tabs", "tabGroups", "storage"],
   "background": {
     "service_worker": "background.js",
@@ -29,6 +29,9 @@
     "open_in_tab": true
   },
   "commands": {
+    "open-saved-groups": {
+      "description": "打开已保存的分组库"
+    },
     "group-tabs": {
       "suggested_key": { "default": "Alt+Shift+G" },
       "description": "自动分组"
